@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-vscode.powershell",
+        "eamodio.gitlens",
+        "ms-python.python",
+        "ms-vscode.cpptools"
+    ]
+}
