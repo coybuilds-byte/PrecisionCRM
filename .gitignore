@@ -1,0 +1,27 @@
+# Common
+.DS_Store
+*.log
+.env
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.env/
+
+# Build
+dist/
+build/
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# Git LFS attributes file
+.gitattributes
