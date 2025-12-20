@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db } from "./db";
 import { recruiters, users } from "@shared/schema";
 import { hashPassword } from "./auth";
@@ -17,33 +18,60 @@ async function seed() {
     
     console.log("Seeded recruiter:", recruiter);
 
-    // Create the admin user for jesse@precisionsourcemanagement.com
     if (recruiter && recruiter.id) {
-      const passwordHash = await hashPassword("Staffpass1");
-      const [adminUser] = await db
-        .insert(users)
-        .values({
+      // Create 3 test users
+      const testUsers = [
+        {
           username: "jesse",
           email: "jesse@precisionsourcemanagement.com",
-          passwordHash,
-          recruiterId: recruiter.id,
-          isAdmin: true
-        })
-        .onConflictDoNothing()
-        .returning();
+          password: "Staffpass1",
+          isAdmin: true,
+          name: "Jesse (Admin)"
+        },
+        {
+          username: "john",
+          email: "john.smith@precisionsource.com",
+          password: "Staffpass1",
+          isAdmin: false,
+          name: "John Smith"
+        },
+        {
+          username: "sarah",
+          email: "sarah.jones@precisionsource.com",
+          password: "Staffpass1",
+          isAdmin: false,
+          name: "Sarah Jones"
+        }
+      ];
 
-      if (adminUser) {
-        console.log("Seeded admin user:", {
-          id: adminUser.id,
-          username: adminUser.username,
-          email: adminUser.email
-        });
-        console.log("Login credentials:");
-        console.log("  Email: jesse@precisionsourcemanagement.com");
-        console.log("  Password: Staffpass1");
-      } else {
-        console.log("Admin user already exists");
+      console.log("\n=== Creating Test Users ===\n");
+      
+      for (const userData of testUsers) {
+        const passwordHash = await hashPassword(userData.password);
+        const [user] = await db
+          .insert(users)
+          .values({
+            username: userData.username,
+            email: userData.email,
+            passwordHash,
+            recruiterId: recruiter.id,
+            isAdmin: userData.isAdmin
+          })
+          .onConflictDoNothing()
+          .returning();
+
+        if (user) {
+          console.log(`✓ Created ${userData.name}:`);
+          console.log(`  Email: ${userData.email}`);
+          console.log(`  Password: ${userData.password}`);
+          console.log(`  Admin: ${userData.isAdmin}`);
+          console.log();
+        } else {
+          console.log(`- User ${userData.email} already exists`);
+        }
       }
+      
+      console.log("=== Seed Complete ===");
     }
     process.exit(0);
   } catch (error) {

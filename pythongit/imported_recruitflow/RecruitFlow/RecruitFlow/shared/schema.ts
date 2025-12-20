@@ -352,6 +352,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   recruiterId: varchar("recruiter_id").references(() => recruiters.id).notNull(),
+  isAdmin: boolean("is_admin").default(false),
   failedLoginAttempts: integer("failed_login_attempts").default(0),
   lockedUntil: timestamp("locked_until"),
   lastLoginAt: timestamp("last_login_at"),

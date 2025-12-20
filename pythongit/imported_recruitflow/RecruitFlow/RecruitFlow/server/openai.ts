@@ -2,9 +2,14 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 export function getOpenAIClient() {
+  if (!openai) {
+    throw new Error("OpenAI API key is not configured. Set OPENAI_API_KEY in your .env file.");
+  }
   return openai;
 }
 
@@ -24,6 +29,14 @@ export interface ParsedResume {
  * @returns Parsed resume with contact info, skills array, and full text
  */
 export async function parseResume(pdfText: string): Promise<ParsedResume> {
+  if (!openai) {
+    console.log('[OpenAI] API key not configured, using basic text extraction');
+    return {
+      skills: [],
+      resumeText: pdfText,
+    };
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5",
