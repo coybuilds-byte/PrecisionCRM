@@ -213,26 +213,31 @@ export class ObjectStorageService {
   normalizeObjectEntityPath(
     rawPath: string,
   ): string {
-    if (!rawPath.startsWith("https://storage.googleapis.com/")) {
+    if (!rawPath || !rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;
     }
   
     // Extract the path from the URL by removing query parameters and domain
-    const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
+    try {
+      const url = new URL(rawPath);
+      const rawObjectPath = url.pathname;
   
-    let objectEntityDir = this.getPrivateObjectDir();
-    if (!objectEntityDir.endsWith("/")) {
-      objectEntityDir = `${objectEntityDir}/`;
+      let objectEntityDir = this.getPrivateObjectDir();
+      if (!objectEntityDir.endsWith("/")) {
+        objectEntityDir = `${objectEntityDir}/`;
+      }
+  
+      if (!rawObjectPath.startsWith(objectEntityDir)) {
+        return rawObjectPath;
+      }
+  
+      // Extract the entity ID from the path
+      const entityId = rawObjectPath.slice(objectEntityDir.length);
+      return `/objects/${entityId}`;
+    } catch (error) {
+      // If URL parsing fails, return the original path
+      return rawPath;
     }
-  
-    if (!rawObjectPath.startsWith(objectEntityDir)) {
-      return rawObjectPath;
-    }
-  
-    // Extract the entity ID from the path
-    const entityId = rawObjectPath.slice(objectEntityDir.length);
-    return `/objects/${entityId}`;
   }
 
   // Tries to set the ACL policy for the object entity and return the normalized path.
