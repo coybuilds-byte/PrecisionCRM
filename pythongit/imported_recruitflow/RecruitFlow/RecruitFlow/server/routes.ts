@@ -78,7 +78,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Call Python service for parsing
         const fetch = (await import('node-fetch')).default;
-        const pythonServiceUrl = `http://localhost:8001/parse?file_path=${encodeURIComponent(tempFilePath)}`;
+        const pythonServiceBaseUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+        const pythonServiceUrl = `${pythonServiceBaseUrl}/parse?file_path=${encodeURIComponent(tempFilePath)}`;
         
         console.log('[RESUME PARSE] Calling Python service with Affinda...');
         const pythonResponse = await fetch(pythonServiceUrl);
@@ -233,7 +234,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // Call Python service for parsing
           const fetch = (await import('node-fetch')).default;
-          const pythonServiceUrl = `http://localhost:8001/parse?file_path=${encodeURIComponent(tempFilePath)}`;
+          const pythonServiceBaseUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001';
+          const pythonServiceUrl = `${pythonServiceBaseUrl}/parse?file_path=${encodeURIComponent(tempFilePath)}`;
           
           console.log('[RESUME PARSE] Calling Python service...');
           const pythonResponse = await fetch(pythonServiceUrl);

@@ -242,11 +242,18 @@ async def parse_resume(
         )
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {"status": "healthy", "service": "resume-parser"}
+
+
 if __name__ == "__main__":
     # Run the FastAPI app on port 8001
+    port = int(os.getenv("PORT", 8001))
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8001,
+        port=port,
         log_level="info"
     )
