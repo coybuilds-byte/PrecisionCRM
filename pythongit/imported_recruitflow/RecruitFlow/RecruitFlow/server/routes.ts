@@ -21,13 +21,19 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf' || 
-        file.mimetype.startsWith('text/') ||
-        file.mimetype === 'text/csv' ||
-        file.mimetype === 'application/csv') {
+    const allowedMimes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'text/csv',
+      'application/csv',
+      'text/plain'
+    ];
+    
+    if (allowedMimes.includes(file.mimetype) || file.mimetype.startsWith('text/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, text, and CSV files are allowed'));
+      cb(new Error('Only PDF, DOCX, text, and CSV files are allowed'));
     }
   }
 });
@@ -40,6 +46,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('[ROUTES] Registering auth routes at /api/auth');
   app.use('/api/auth', authRoutes);
   console.log('[ROUTES] Auth routes registered successfully');
+
+  // Simple local file upload for development
+  app.post("/api/upload/resume", requireAuth, upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const file = req.file;
+      const fileExtension = file.originalname.split('.').pop()?.toLowerCase();
+      
+      if (!['pdf', 'docx', 'doc'].includes(fileExtension || '')) {
+        return res.status(400).json({ error: 'Only PDF and DOCX files are supported' });
+      }
+
+      console.log('[RESUME UPLOAD] Processing file:', file.originalname, 'Size:', file.size);
+
+      // Save file temporarily
+      const fs = require('fs');
+      const path = require('path');
+      const tempDir = path.join(process.cwd(), 'temp');
+      
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const tempFilePath = path.join(tempDir, `${Date.now()}_${file.originalname}`);
+      fs.writeFileSync(tempFilePath, file.buffer);
+
+      try {
+        // Call Python service for parsing
+        const fetch = (await import('node-fetch')).default;
+        const pythonServiceUrl = `http://localhost:8001/parse?file_path=${encodeURIComponent(tempFilePath)}`;
+        
+        console.log('[RESUME PARSE] Calling Python service with Affinda...');
+        const pythonResponse = await fetch(pythonServiceUrl);
+        
+        if (!pythonResponse.ok) {
+          const errorText = await pythonResponse.text();
+          throw new Error(`Python service error: ${errorText}`);
+        }
+        
+        const parsedData = await pythonResponse.json();
+        console.log('[RESUME PARSE] Success! Extracted:', {
+          name: parsedData.name,
+          email: parsedData.email,
+          skillsCount: parsedData.skills?.length || 0
+        });
+        
+        // Clean up temp file
+        fs.unlinkSync(tempFilePath);
+        
+        // Return parsed data
+        return res.json({
+          success: true,
+          data: {
+            name: parsedData.name || '',
+            firstName: parsedData.name?.split(' ')[0] || '',
+            lastName: parsedData.name?.split(' ').slice(1).join(' ') || '',
+            email: parsedData.email || '',
+            phone: parsedData.phone || '',
+            address: parsedData.address || '',
+            linkedin: parsedData.linkedin || '',
+            skills: parsedData.skills || [],
+            resumeText: parsedData.text || '',
+            fileName: file.originalname
+          }
+        });
+      } catch (parseError: any) {
+        console.error('[RESUME PARSE] Error:', parseError);
+        // Clean up temp file on error
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+        return res.status(500).json({ 
+          error: 'Failed to parse resume', 
+          details: parseError.message 
+        });
+      }
+    } catch (error: any) {
+      console.error('[RESUME UPLOAD] Error:', error);
+      return res.status(500).json({ error: error.message || 'Upload failed' });
+    }
+  });
 
   // Object storage routes for protected file uploading
   // Endpoint for serving private objects with ACL check

@@ -6,3 +6,6 @@ pytest==9.0.1
 httpx==0.28.1
 python-multipart==0.0.20
 PyPDF2==3.0.1
+pdf2image==1.17.0
+pytesseract==0.3.13
+Pillow==11.0.0

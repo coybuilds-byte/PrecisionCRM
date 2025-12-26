@@ -144,6 +144,9 @@ async def parse_resume(
             elif file_extension in ['.docx', '.doc']:
                 extracted_text = extract_text_from_docx(file_content)
         
+        logger.info(f"Extracted text length: {len(extracted_text) if extracted_text else 0}")
+        logger.info(f"First 500 chars: {extracted_text[:500] if extracted_text else 'NO TEXT'}")
+        
         if not extracted_text:
             raise HTTPException(
                 status_code=422,
@@ -204,7 +207,9 @@ async def parse_resume(
 
         # If Affinda didn't provide structured info, use the local extractor on extracted_text
         if not any(contact_info.values()):
+            logger.info("Running local contact extraction...")
             contact_info = extract_contact_info(extracted_text)
+            logger.info(f"Local extraction results: {contact_info}")
         
         # Prepare response with flat structure matching Express backend expectations
         response = {

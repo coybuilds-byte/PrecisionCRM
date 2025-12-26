@@ -15,8 +15,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCandidateSchema } from "@shared/schema";
 import { z } from "zod";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
 import { apiRequest } from "@/lib/queryClient";
 
 type CandidateFormData = z.infer<typeof insertCandidateSchema>;
@@ -29,16 +27,32 @@ export default function Candidates() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fixed recruiter ID for demo - in real app this would come from auth
-  const DEMO_RECRUITER_ID = "c63b07a5-7323-4ae3-b3d5-e871d13526f0";
-
-  const { data: candidates = [], isLoading } = useQuery({
-    queryKey: ['/api/candidates', DEMO_RECRUITER_ID],
+  // Get logged-in user from auth context
+  const { data: authData } = useQuery({
+    queryKey: ['/api/auth/me'],
     queryFn: async () => {
-      const response = await fetch(`/api/candidates?recruiterId=${DEMO_RECRUITER_ID}`);
-      if (!response.ok) throw new Error('Failed to fetch candidates');
+      const response = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!response.ok) return null;
       return response.json();
     }
+  });
+  
+  const recruiterId = authData?.user?.id || "";
+  const isOwner = authData?.user?.email === "jesse@precisionsourcemanagement.com";
+
+  const { data: candidates = [], isLoading } = useQuery({
+    queryKey: ['/api/candidates', isOwner ? 'all' : recruiterId],
+    queryFn: async () => {
+      if (!recruiterId) return [];
+      // Owner sees all candidates, others see only their own
+      const url = isOwner 
+        ? '/api/candidates' 
+        : `/api/candidates?recruiterId=${recruiterId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch candidates');
+      return response.json();
+    },
+    enabled: !!recruiterId
   });
 
   const createCandidateMutation = useMutation({
@@ -74,7 +88,7 @@ export default function Candidates() {
         body: JSON.stringify({ 
           candidates: csvData.map(row => ({
             ...row,
-            recruiterId: DEMO_RECRUITER_ID,
+            recruiterId: recruiterId,
             skills: row.skills ? row.skills.split(',').map((s: string) => s.trim()) : []
           }))
         }),
@@ -101,7 +115,7 @@ export default function Candidates() {
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<CandidateFormData>({
     resolver: zodResolver(insertCandidateSchema),
     defaultValues: {
-      recruiterId: DEMO_RECRUITER_ID,
+      recruiterId: recruiterId,
     }
   });
 
@@ -252,88 +266,72 @@ export default function Candidates() {
               </div>
 
               <div>
-                <Label>Resume Upload</Label>
+                <Label>Resume Upload (Direct)</Label>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Upload a PDF resume to automatically extract contact info and skills
+                  Upload a PDF or DOCX resume to automatically extract contact info and skills
                 </p>
-                <ObjectUploader
-                  maxNumberOfFiles={1}
-                  maxFileSize={10485760}
-                  onGetUploadParameters={async (file: any) => {
-                    const response = await apiRequest("POST", "/api/objects/upload", {
-                      filename: file.name,
-                      contentType: file.type,
-                    });
-                    const data = await response.json();
-                    return {
-                      method: "PUT" as const,
-                      url: data.uploadURL,
-                    };
-                  }}
-                  onComplete={async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-                    if (result.successful && result.successful.length > 0) {
-                      const uploadedFile = result.successful[0] as any;
-                      const resumeURL = uploadedFile.uploadURL || uploadedFile.response?.uploadURL;
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc"
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
 
-                      // Process the uploaded resume
-                      try {
-                        const response = await apiRequest("POST", "/api/candidates/resume-upload", { resumeURL });
-                        
-                        const parseResult = await response.json();
-                        
-                        console.log('[FRONTEND] Received parse result from backend:', parseResult);
-                        
-                        // Auto-fill form with extracted data using setValue
-                        if (parseResult.viewUrl) {
-                          setValue("resumeUrl", parseResult.viewUrl);
-                        } else if (parseResult.objectPath) {
-                          // Fallback for backward compatibility
-                          setValue("resumeUrl", `/objects/${parseResult.objectPath}`);
-                        }
-                        if (parseResult.firstName) {
-                          setValue("firstName", parseResult.firstName);
-                        }
-                        if (parseResult.lastName) {
-                          setValue("lastName", parseResult.lastName);
-                        }
-                        if (parseResult.email) {
-                          setValue("email", parseResult.email);
-                        }
-                        if (parseResult.phone) {
-                          setValue("phone", parseResult.phone);
-                        }
-                        if (parseResult.location) {
-                          setValue("location", parseResult.location);
-                        }
-                        if (parseResult.skills && parseResult.skills.length > 0) {
-                          // Convert array to comma-separated string for the input field
-                          setValue("skills", parseResult.skills.join(', '));
-                        }
-                        if (parseResult.resumeText) {
-                          setValue("resumeText", parseResult.resumeText);
-                        }
-                        if (parseResult.filename) {
-                          setValue("resumeFilename", parseResult.filename);
-                        }
-                        
-                        toast({
-                          title: "Resume Parsed Successfully",
-                          description: `Auto-filled contact info and ${parseResult.skills?.length || 0} skills from resume`,
-                        });
-                      } catch (error) {
-                        toast({
-                          title: "Error",
-                          description: "Failed to parse resume",
-                          variant: "destructive",
-                        });
+                    try {
+                      toast({ title: "Uploading", description: "Processing your resume..." });
+                      
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      
+                      const response = await fetch('/api/upload/resume', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                      });
+                      
+                      if (!response.ok) {
+                        throw new Error('Upload failed');
                       }
+                      
+                      const parseResult = await response.json();
+                      console.log('[FRONTEND] Received parse result:', parseResult);
+                      
+                      // Auto-fill form with extracted data (data is nested in parseResult.data)
+                      const data = parseResult.data || parseResult;
+                      
+                      if (data.firstName) {
+                        setValue("firstName", data.firstName);
+                      }
+                      if (data.lastName) {
+                        setValue("lastName", data.lastName);
+                      }
+                      if (data.email) {
+                        setValue("email", data.email);
+                      }
+                      if (data.phone) {
+                        setValue("phone", data.phone);
+                      }
+                      if (data.location || data.address) {
+                        setValue("location", data.location || data.address);
+                      }
+                      if (data.skills && data.skills.length > 0) {
+                        setValue("skills", data.skills.join(', '));
+                      }
+                      
+                      toast({
+                        title: "Resume Parsed Successfully",
+                        description: `Auto-filled contact info and ${data.skills?.length || 0} skills from resume`,
+                      });
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to parse resume",
+                        variant: "destructive",
+                      });
                     }
                   }}
-                  buttonClassName="w-full"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Upload Resume PDF
-                </ObjectUploader>
+                />
               </div>
 
               <div>

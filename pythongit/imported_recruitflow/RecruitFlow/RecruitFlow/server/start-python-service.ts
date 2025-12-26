@@ -1,10 +1,20 @@
 import { spawn } from 'child_process';
 import { log } from './vite';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 export function startPythonResumeParser() {
   log('Starting Python Resume Parser Service on port 8001...');
   
-  const pythonProcess = spawn('python', ['python-services/start_service.py'], {
+  // Check for virtual environment Python on Windows
+  const venvPython = join(process.cwd(), 'python-services', '.venv', 'Scripts', 'python.exe');
+  const pythonCmd = existsSync(venvPython) ? venvPython : 'python';
+  
+  if (pythonCmd !== 'python') {
+    log('Using Python from virtual environment');
+  }
+  
+  const pythonProcess = spawn(pythonCmd, ['python-services/start_service.py'], {
     stdio: 'pipe',
     detached: false
   });

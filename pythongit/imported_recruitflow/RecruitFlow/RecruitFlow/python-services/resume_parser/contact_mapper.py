@@ -198,21 +198,84 @@ def extract_linkedin(text: str) -> Optional[str]:
 
 def extract_skills(text: str) -> List[str]:
     """
-    Extract skills from text
+    Extract skills from text using comprehensive tech skills database
     
     Args:
         text: Input text
         
     Returns:
-        List of skills
+        List of skills found in the text
     """
-    skills = []
+    # Comprehensive tech skills database
+    tech_skills = [
+        # Programming Languages
+        'Python', 'Java', 'JavaScript', 'TypeScript', 'C++', 'C#', 'Ruby', 'Go', 'Rust', 'PHP', 'Swift', 'Kotlin',
+        'Scala', 'Perl', 'R', 'MATLAB', 'Objective-C', 'Dart', 'Elixir', 'Haskell', 'Lua', 'Julia', 'VB.NET',
+        
+        # Frontend
+        'React', 'Angular', 'Vue', 'Vue.js', 'Svelte', 'jQuery', 'Bootstrap', 'Tailwind', 'Material-UI', 'Next.js',
+        'Nuxt.js', 'Gatsby', 'HTML', 'HTML5', 'CSS', 'CSS3', 'SASS', 'SCSS', 'LESS', 'Webpack', 'Vite', 'Babel',
+        
+        # Backend
+        'Node.js', 'Express', 'Django', 'Flask', 'FastAPI', 'Spring', 'Spring Boot', 'Ruby on Rails', 'ASP.NET',
+        '.NET', '.NET Core', 'Laravel', 'Symfony', 'NestJS', 'Koa', 'Gin', 'Echo',
+        
+        # Databases
+        'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Cassandra', 'DynamoDB', 'Oracle', 'SQL Server', 'SQLite',
+        'MariaDB', 'CouchDB', 'Neo4j', 'Elasticsearch', 'InfluxDB', 'Firebase', 'Supabase',
+        
+        # Cloud & DevOps
+        'AWS', 'Azure', 'GCP', 'Google Cloud', 'Docker', 'Kubernetes', 'Jenkins', 'GitLab CI', 'GitHub Actions',
+        'CircleCI', 'Travis CI', 'Terraform', 'Ansible', 'Chef', 'Puppet', 'Vagrant', 'Nginx', 'Apache',
+        
+        # Data & AI/ML
+        'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas', 'NumPy', 'SciPy', 'Matplotlib', 'Seaborn',
+        'Tableau', 'Power BI', 'Spark', 'Hadoop', 'Kafka', 'Airflow', 'Databricks', 'Snowflake', 'BigQuery',
+        
+        # Mobile
+        'React Native', 'Flutter', 'iOS', 'Android', 'Xamarin', 'Ionic', 'Cordova', 'SwiftUI',
+        
+        # Testing
+        'Jest', 'Mocha', 'Chai', 'Jasmine', 'Pytest', 'JUnit', 'Selenium', 'Cypress', 'TestNG', 'Cucumber',
+        
+        # Tools & Version Control
+        'Git', 'GitHub', 'GitLab', 'Bitbucket', 'SVN', 'JIRA', 'Confluence', 'Slack', 'VS Code', 'IntelliJ',
+        
+        # Methodologies
+        'Agile', 'Scrum', 'Kanban', 'DevOps', 'CI/CD', 'TDD', 'BDD', 'Microservices', 'REST', 'GraphQL', 'SOAP',
+        
+        # ERP & Business Systems
+        'SAP', 'Oracle ERP', 'Salesforce', 'Dynamics 365', 'NetSuite', 'Workday', 'ServiceNow', 'PeopleSoft',
+        'JD Edwards', 'Epicor', 'Infor', 'Microsoft Dynamics', 'Odoo', 'Zoho',
+        
+        # Supply Chain & Logistics
+        'WMS', 'OMS', 'TMS', 'ERP', 'SCM', '3PL', 'EPC', 'RFID', 'Warehouse Management', 'Order Management',
+        'Supply Chain', 'Logistics', 'Inventory Management', 'Manhattan WMS', 'Blue Yonder', 'JDA',
+        'Oracle WMS', 'SAP EWM', 'Infor WMS', 'Ecommerce', 'E-commerce', 'Omnichannel', 'Retail',
+        
+        # Other Technologies
+        'Blockchain', 'IoT', 'AR', 'VR', 'Machine Learning', 'Deep Learning', 'NLP', 'Computer Vision',
+        'API', 'Microservices', 'Serverless', 'Lambda', 'gRPC', 'WebSocket', 'OAuth', 'JWT', 'SSL', 'TLS'
+    ]
     
-    # Common skill section headers
-    skill_headers = ['Skills:', 'Technical Skills:', 'Core Competencies:', 'Expertise:', 'Technologies:', 'Programming Languages:']
+    found_skills = []
+    text_lower = text.lower()
+    
+    # Search for each skill in the text (case-insensitive)
+    for skill in tech_skills:
+        # Create pattern that matches skill as a whole word
+        pattern = r'\b' + re.escape(skill.lower()) + r'\b'
+        if re.search(pattern, text_lower):
+            found_skills.append(skill)
+    
+    # Also extract from explicit skills sections
+    skill_headers = [
+        'Skills:', 'Technical Skills:', 'Core Competencies:', 'Expertise:', 'Technologies:',
+        'Programming Languages:', 'Tools:', 'Certifications:', 'Qualifications:'
+    ]
     
     for header in skill_headers:
-        pattern = f'{re.escape(header)}\\s*([^\\n]+(?:\\n[^\\n]+)*)'
+        pattern = f'{re.escape(header)}\\s*([^\\n]+(?:\\n[^\\n]+)*?)(?=\\n\\n|\\n[A-Z][A-Z]|$)'
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             skill_text = match.group(1)
@@ -220,19 +283,20 @@ def extract_skills(text: str) -> List[str]:
             skill_items = re.split(r'[,;|\n•·]', skill_text)
             for item in skill_items:
                 skill = item.strip(' -').strip()
-                if skill and len(skill) < 50 and len(skill) > 1:
-                    skills.append(skill)
-            break
+                if skill and 2 < len(skill) < 50 and skill not in found_skills:
+                    found_skills.append(skill)
     
     # Deduplicate while preserving order
     seen = set()
     unique_skills = []
-    for skill in skills:
-        if skill.lower() not in seen:
-            seen.add(skill.lower())
+    for skill in found_skills:
+        skill_lower = skill.lower()
+        if skill_lower not in seen:
+            seen.add(skill_lower)
             unique_skills.append(skill)
     
-    return unique_skills[:20]  # Limit to top 20 skills
+    logger.info(f"Extracted {len(unique_skills)} skills from resume")
+    return unique_skills
 
 
 def extract_contact_info(text: str) -> Dict[str, Optional[str]]:
