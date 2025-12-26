@@ -1,0 +1,52 @@
+services:
+  # Main Node.js backend + React frontend
+  - type: web
+    name: recruitflow-api
+    runtime: node
+    region: oregon
+    plan: starter
+    rootDir: pythongit/imported_recruitflow/RecruitFlow/RecruitFlow
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: AFFINDA_API_KEY
+        sync: false
+      - key: AUTH_PEPPER
+        sync: false
+      - key: SESSION_PEPPER
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PORT
+        value: 5000
+      - key: PYTHON_SERVICE_URL
+        fromService:
+          type: web
+          name: recruitflow-python
+          property: host
+
+  # Python FastAPI resume parser service with OCR support
+  - type: web
+    name: recruitflow-python
+    runtime: python
+    region: oregon
+    plan: starter
+    rootDir: pythongit/imported_recruitflow/RecruitFlow/RecruitFlow
+    buildCommand: |
+      apt-get update && 
+      apt-get install -y tesseract-ocr poppler-utils && 
+      pip install -r python-services/requirements.txt
+    startCommand: cd python-services && uvicorn resume_parser.main:app --host 0.0.0.0 --port 8001
+    healthCheckPath: /health
+    envVars:
+      - key: AFFINDA_API_KEY
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PORT
+        value: 8001
