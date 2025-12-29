@@ -1,0 +1,32 @@
+John Michael Smith
+Senior Software Engineer
+
+Contact Information:
+Email: john.smith@email.com
+Phone: (555) 123-4567
+Location: San Francisco, CA 94105
+LinkedIn: https://www.linkedin.com/in/johnsmith
+
+Professional Summary:
+Experienced software engineer with 8+ years of experience in full-stack development, 
+specializing in React, Node.js, and cloud technologies. Proven track record of 
+delivering scalable web applications and leading development teams.
+
+Skills:
+JavaScript, TypeScript, React, Node.js, Python, AWS, Docker, Kubernetes, 
+PostgreSQL, MongoDB, GraphQL, REST APIs, CI/CD, Agile/Scrum
+
+Experience:
+Senior Software Engineer | Tech Corp Inc. | 2020 - Present
+- Led development of microservices architecture serving 2M+ users
+- Implemented automated CI/CD pipelines reducing deployment time by 60%
+- Mentored junior developers and conducted code reviews
+
+Software Engineer | StartupXYZ | 2018 - 2020
+- Built responsive web applications using React and Node.js
+- Designed and implemented RESTful APIs
+- Collaborated with product team to deliver features on schedule
+
+Education:
+Bachelor of Science in Computer Science
+University of California, Berkeley | 2014 - 2018
