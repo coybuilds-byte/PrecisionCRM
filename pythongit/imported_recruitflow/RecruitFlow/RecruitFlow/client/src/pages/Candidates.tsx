@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import CandidateCard from "@/components/CandidateCard";
 import CandidateDetailModal from "@/components/CandidateDetailModal";
@@ -24,6 +24,7 @@ export default function Candidates() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -271,6 +272,7 @@ export default function Candidates() {
                   Upload a PDF or DOCX resume to automatically extract contact info and skills
                 </p>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".pdf,.docx,.doc"
                   className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
@@ -323,12 +325,21 @@ export default function Candidates() {
                         title: "Resume Parsed Successfully",
                         description: `Auto-filled contact info and ${data.skills?.length || 0} skills from resume`,
                       });
+
+                      // Reset the file input to allow uploading the same file again
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
                     } catch (error) {
                       toast({
                         title: "Error",
                         description: "Failed to parse resume",
                         variant: "destructive",
                       });
+                      // Reset the file input even on error to allow retry
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
                     }
                   }}
                 />
